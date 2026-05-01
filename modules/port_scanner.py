@@ -7,7 +7,6 @@ Identifies open, closed, and filtered ports.
 
 import socket
 import concurrent.futures
-import time
 from typing import List, Dict, Optional
 
 # Well-known service names mapped to port numbers

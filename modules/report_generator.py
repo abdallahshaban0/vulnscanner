@@ -6,7 +6,6 @@ of all scan findings.
 """
 
 import json
-import os
 from datetime import datetime
 from typing import Dict, List
 

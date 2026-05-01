@@ -16,8 +16,8 @@ import requests
 import ssl
 import socket
 import urllib3
-from typing import Dict, List, Optional
-from urllib.parse import urlparse, urljoin
+from typing import Dict, List
+from urllib.parse import urlparse
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

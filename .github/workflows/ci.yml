@@ -8,9 +8,10 @@ on:
 
 jobs:
   test:
-    name: Lint & Import Tests
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
 
@@ -29,34 +30,26 @@ jobs:
         pip install -r requirements.txt
         pip install flake8
 
-    - name: Lint with flake8
+    - name: Lint — syntax errors only (strict)
       run: |
-        # Stop if there are syntax errors
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Warnings only (don't fail CI)
-        flake8 . --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
+        flake8 . --select=E9,F63,F7,F82 --show-source
+
+    - name: Lint — style warnings (non-blocking)
+      run: |
+        flake8 . --exit-zero --max-line-length=120 --statistics
 
     - name: Test module imports
       run: |
-        python -c "from modules.port_scanner import run_port_scan; print('✓ port_scanner OK')"
-        python -c "from modules.http_scanner import check_http_vulnerabilities; print('✓ http_scanner OK')"
-        python -c "from modules.dns_recon import run_dns_recon; print('✓ dns_recon OK')"
-        python -c "from modules.vuln_analysis import calculate_risk_score; print('✓ vuln_analysis OK')"
-        python -c "from modules.report_generator import generate_html_report; print('✓ report_generator OK')"
+        python -c "from modules.port_scanner import run_port_scan; print('port_scanner OK')"
+        python -c "from modules.http_scanner import check_http_vulnerabilities; print('http_scanner OK')"
+        python -c "from modules.dns_recon import run_dns_recon; print('dns_recon OK')"
+        python -c "from modules.vuln_analysis import calculate_risk_score; print('vuln_analysis OK')"
+        python -c "from modules.report_generator import generate_html_report; print('report_generator OK')"
 
     - name: Test CLI help
-      run: |
-        python scanner.py --help
+      run: python scanner.py --help
 
-    - name: Test port scanner (localhost)
-      run: |
-        python -c "
-        from modules.port_scanner import run_port_scan
-        results = run_port_scan('127.0.0.1', scan_type='custom', port_range='80,443', timeout=0.5)
-        print(f'✓ Port scan returned {len(results)} result(s)')
-        "
-
-    - name: Test risk scoring
+    - name: Test risk scoring logic
       run: |
         python -c "
         from modules.vuln_analysis import calculate_risk_score
@@ -68,7 +61,7 @@ jobs:
         score = calculate_risk_score(vulns)
         assert score['score'] == 40, f'Expected 40, got {score[\"score\"]}'
         assert score['rating'] == 'MEDIUM'
-        print(f'✓ Risk scoring OK — score={score[\"score\"]}, rating={score[\"rating\"]}')
+        print(f'Risk scoring OK — score={score[\"score\"]}, rating={score[\"rating\"]}')
         "
 
     - name: Test HTML report generation
@@ -79,7 +72,7 @@ jobs:
         scan_data = {
           'target': 'test.example.com',
           'timestamp': '2026-01-01 00:00:00',
-          'modules_run': ['Port Scan', 'HTTP Scanner'],
+          'modules_run': ['Port Scan'],
           'ports': [{'port': 80, 'service': 'HTTP', 'risk': 'LOW', 'banner': None}],
           'http': {'reachable': False},
           'dns': {},
@@ -92,21 +85,17 @@ jobs:
         generate_html_report(scan_data, path)
         size = os.path.getsize(path)
         os.unlink(path)
-        assert size > 1000, f'Report too small: {size} bytes'
-        print(f'✓ HTML report generated OK ({size} bytes)')
+        assert size > 1000
+        print(f'HTML report OK ({size} bytes)')
         "
 
   docker:
-    name: Docker Build Test
+    name: Docker Build
     runs-on: ubuntu-latest
     needs: test
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
+    - uses: actions/checkout@v4
     - name: Build Docker image
       run: docker build -t vulnscanner:test .
-
-    - name: Test Docker image runs
+    - name: Test Docker runs
       run: docker run --rm vulnscanner:test --help

@@ -13,7 +13,7 @@ Performs:
 
 import socket
 import concurrent.futures
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 try:
     import dns.resolver
@@ -29,8 +29,6 @@ try:
     WHOIS_AVAILABLE = True
 except ImportError:
     WHOIS_AVAILABLE = False
-
-import requests
 
 # Common subdomains to enumerate
 COMMON_SUBDOMAINS = [
