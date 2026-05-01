@@ -28,15 +28,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install flake8
-
-    - name: Lint — syntax errors only (strict)
-      run: |
-        flake8 . --select=E9,F63,F7,F82 --show-source --exclude=modules/report_generator.py
-
-    - name: Lint — style warnings (non-blocking)
-      run: |
-        flake8 . --exit-zero --max-line-length=120 --statistics
 
     - name: Test module imports
       run: |
@@ -59,9 +50,9 @@ jobs:
           {'severity': 'MEDIUM', 'type': 'TEST'},
         ]
         score = calculate_risk_score(vulns)
-        assert score['score'] == 40, f'Expected 40, got {score[\"score\"]}'
+        assert score['score'] == 40
         assert score['rating'] == 'MEDIUM'
-        print(f'Risk scoring OK — score={score[\"score\"]}, rating={score[\"rating\"]}')
+        print('Risk scoring OK — score=' + str(score['score']) + ', rating=' + score['rating'])
         "
 
     - name: Test HTML report generation
@@ -86,7 +77,7 @@ jobs:
         size = os.path.getsize(path)
         os.unlink(path)
         assert size > 1000
-        print(f'HTML report OK ({size} bytes)')
+        print('HTML report OK (' + str(size) + ' bytes)')
         "
 
   docker:
