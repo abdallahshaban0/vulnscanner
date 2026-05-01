@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "vulnscanner"
+version = "1.0.0"
+description = "Automated Vulnerability Scanner for Ethical Hacking & Penetration Testing"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+keywords = ["security", "vulnerability", "scanner", "penetration-testing", "ethical-hacking"]
+dependencies = [
+    "requests>=2.31.0",
+    "colorama>=0.4.6",
+    "python-whois>=0.8.0",
+    "dnspython>=2.4.2",
+]
+
+[project.scripts]
+vulnscanner = "scanner:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modules*"]

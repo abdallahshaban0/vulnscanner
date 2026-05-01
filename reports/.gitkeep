@@ -1,0 +1,2 @@
+# This file ensures the reports/ directory is tracked by git.
+# Scan reports (.html, .json) are generated here at runtime and are gitignored.
