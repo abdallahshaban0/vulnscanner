@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VulnScanner — Web Security Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e1a;--bg2:#0d1117;--bg3:#111827;--bg4:#1f2937;
+  --border:#1f2937;--border2:#374151;
+  --text:#f9fafb;--text2:#9ca3af;--text3:#6b7280;
+  --blue:#3b82f6;--blue2:#1d4ed8;--blue3:#dbeafe;
+  --red:#ef4444;--red2:#fef2f2;--red3:#991b1b;
+  --orange:#f97316;--orange2:#fff7ed;--orange3:#9a3412;
+  --yellow:#eab308;--yellow2:#fefce8;--yellow3:#854d0e;
+  --green:#22c55e;--green2:#f0fdf4;--green3:#166534;
+  --purple:#8b5cf6;
+  --radius:8px;--radius2:12px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;line-height:1.6}
+
+/* ── Layout ── */
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem;position:sticky;top:0;height:100vh;overflow-y:auto}
+.main{padding:2rem;overflow-y:auto}
+
+/* ── Sidebar ── */
+.logo{display:flex;align-items:center;gap:10px;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,#1e3a5f,#1e1b4b);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid #374151}
+.logo-icon svg{width:20px;height:20px}
+.logo-text{font-size:16px;font-weight:800;letter-spacing:-0.5px}
+.logo-ver{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+
+.sidebar-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
+
+.input-wrap{display:flex;flex-direction:column;gap:8px}
+.target-input{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;width:100%;transition:border-color .2s}
+.target-input:focus{border-color:var(--blue)}
+.target-input::placeholder{color:var(--text3)}
+
+.scan-btn{background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:11px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;width:100%}
+.scan-btn:hover{background:var(--blue2)}
+.scan-btn:active{transform:scale(0.98)}
+.scan-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.examples-label{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.chips{display:flex;flex-direction:column;gap:4px}
+.chip{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text2);padding:6px 10px;border-radius:6px;cursor:pointer;transition:all .15s;border:1px solid transparent}
+.chip:hover{background:var(--bg4);border-color:var(--border2);color:var(--text)}
+
+.modules{display:flex;flex-direction:column;gap:6px}
+.module-toggle{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);background:var(--bg3);border:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--text2)}
+.module-toggle input[type=checkbox]{accent-color:var(--blue);width:15px;height:15px;cursor:pointer}
+.module-toggle span{color:var(--text);font-weight:600;font-size:12px}
+.module-toggle small{color:var(--text3);font-size:11px;font-family:'JetBrains Mono',monospace;margin-left:auto}
+
+.sidebar-footer{margin-top:auto;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;line-height:1.6;padding-top:1rem;border-top:1px solid var(--border)}
+
+/* ── Main content ── */
+.main-header{margin-bottom:2rem}
+.main-title{font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--text)}
+.main-sub{font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:4px}
+
+/* ── Empty state ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;gap:1rem;text-align:center}
+.empty-icon{width:64px;height:64px;border:2px dashed var(--border2);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.empty-icon svg{width:28px;height:28px;color:var(--text3)}
+.empty-title{font-size:18px;font-weight:700;color:var(--text2)}
+.empty-sub{font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;max-width:360px;line-height:1.6}
+
+/* ── Progress ── */
+.progress-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.5rem;margin-bottom:1.5rem}
+.progress-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:1rem}
+.step{display:flex;align-items:center;gap:12px;padding:7px 0;font-size:13px;font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--border)}
+.step:last-child{border-bottom:none}
+.step-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;font-weight:700}
+.step.wait .step-dot{background:var(--bg4);color:var(--text3);border:1px solid var(--border2)}
+.step.active .step-dot{background:#1e3a5f;color:var(--blue);animation:pulse 1.2s infinite}
+.step.done .step-dot{background:#14532d;color:var(--green)}
+.step.error .step-dot{background:#7f1d1d;color:var(--red)}
+.step.wait{color:var(--text3)}
+.step.active{color:var(--blue)}
+.step.done{color:var(--text2)}
+.step.error{color:var(--red)}
+.step-msg{flex:1}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Score section ── */
+.score-grid{display:grid;grid-template-columns:160px 1fr;gap:1rem;margin-bottom:1.5rem}
+.grade-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;gap:4px}
+.grade-letter{font-size:64px;font-weight:800;line-height:1;letter-spacing:-4px}
+.grade-word{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.grade-score{font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:4px}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center}
+.stat-num{font-size:28px;font-weight:800;line-height:1;font-family:'JetBrains Mono',monospace}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+.stat-bar{height:3px;border-radius:2px;margin-top:8px}
+
+/* ── Progress bar ── */
+.risk-bar-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:1.25rem;margin-bottom:1.5rem}
+.risk-bar-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
+.risk-bar{height:8px;background:var(--bg4);border-radius:4px;overflow:hidden}
+.risk-bar-fill{height:100%;border-radius:4px;transition:width 1s ease}
+
+/* ── Info cards ── */
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.5rem}
+.info-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.info-card-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.info-card-val{font-size:13px;color:var(--text);font-family:'JetBrains Mono',monospace;word-break:break-all}
+
+/* ── Section ── */
+.section{margin-bottom:1.5rem}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.section-count{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:2px 10px}
+
+/* ── Vulnerability cards ── */
+.vuln{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:6px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;transition:border-color .15s}
+.vuln:hover{border-color:var(--border2)}
+.sev-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;white-space:nowrap;margin-top:2px}
+.sev-badge.CRITICAL{background:var(--red3);color:#fca5a5}
+.sev-badge.HIGH{background:#7c2d12;color:#fdba74}
+.sev-badge.MEDIUM{background:#713f12;color:#fde68a}
+.sev-badge.LOW{background:#14532d;color:#86efac}
+.sev-badge.INFO{background:#1e3a5f;color:#93c5fd}
+.vuln-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
+.vuln-desc{font-size:12px;color:var(--text2);line-height:1.5}
+.vuln-rec{font-size:11px;color:var(--blue);font-family:'JetBrains Mono',monospace;margin-top:5px;display:flex;align-items:flex-start;gap:4px}
+.vuln-rec::before{content:"→";flex-shrink:0}
+
+/* ── Port table ── */
+.port-table{width:100%;border-collapse:collapse;font-size:13px;font-family:'JetBrains Mono',monospace}
+.port-table th{text-align:left;padding:8px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)}
+.port-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
+.port-table tr:last-child td{border-bottom:none}
+.port-table tr:hover td{background:var(--bg3)}
+.port-num{color:var(--blue);font-weight:700}
+.risk-high{color:var(--red)}
+.risk-medium{color:var(--orange)}
+.risk-low{color:var(--green)}
+
+/* ── DNS grid ── */
+.dns-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dns-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.dns-card-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
+.dns-record{font-size:12px;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:3px 0;border-bottom:1px solid var(--border)}
+.dns-record:last-child{border-bottom:none}
+.dns-rtype{color:var(--blue);font-weight:700;display:inline-block;width:40px}
+
+/* ── Report btn ── */
+.report-btn{display:inline-flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 16px;color:var(--text);font-size:13px;font-family:'Syne',sans-serif;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;margin-top:1rem}
+.report-btn:hover{background:var(--bg4);border-color:var(--blue)}
+
+/* ── Error ── */
+.error-box{background:#1c0a0a;border:1px solid #7f1d1d;border-radius:var(--radius);padding:1rem;font-size:13px;color:#fca5a5;font-family:'JetBrains Mono',monospace;margin-bottom:1rem}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{height:auto;position:static}
+  .score-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .info-grid{grid-template-columns:1fr 1fr}
+  .dns-grid{grid-template-columns:1fr}
+}
+
+/* ── Summary ── */
+.summary-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;font-size:13px;color:var(--text2);line-height:1.7;font-family:'JetBrains Mono',monospace;margin-bottom:1.5rem}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ─── Sidebar ─────────────────────────────────────────────────── -->
+  <div class="sidebar">
+
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round">
+          <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+          <path d="M12 8v4M12 16h.01" stroke="#f87171"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">VulnScanner</div>
+        <div class="logo-ver">v1.0 // by abdallahshaban0</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-label">Target</div>
+      <div class="input-wrap">
+        <input class="target-input" id="targetInput" placeholder="example.com" type="text" />
+        <button class="scan-btn" id="scanBtn" onclick="startScan()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Scan Target
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-label">Quick targets</div>
+      <div class="chips">
+        <div class="chip" onclick="setTarget('scanme.nmap.org')">scanme.nmap.org (legal test)</div>
+        <div class="chip" onclick="setTarget('http.badssl.com')">http.badssl.com (bad SSL)</div>
+        <div class="chip" onclick="setTarget('example.com')">example.com</div>
+        <div class="chip" onclick="setTarget('github.com')">github.com</div>
+        <div class="chip" onclick="setTarget('wordpress.org')">wordpress.org</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-label">Modules</div>
+      <div class="modules">
+        <label class="module-toggle">
+          <input type="checkbox" id="modHttp" checked>
+          <span>HTTP Scanner</span>
+          <small>headers/SSL</small>
+        </label>
+        <label class="module-toggle">
+          <input type="checkbox" id="modDns" checked>
+          <span>DNS Recon</span>
+          <small>records/AXFR</small>
+        </label>
+        <label class="module-toggle">
+          <input type="checkbox" id="modPorts" checked>
+          <span>Port Scanner</span>
+          <small>common ports</small>
+        </label>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      ⚠ For authorised testing only.<br>
+      Only scan systems you own or have<br>
+      explicit permission to test.<br><br>
+      &copy; 2026 abdallahshaban0
+    </div>
+
+  </div>
+
+  <!-- ─── Main ─────────────────────────────────────────────────────── -->
+  <div class="main">
+    <div class="main-header">
+      <div class="main-title">Security Assessment</div>
+      <div class="main-sub">// enter a target on the left and click Scan to begin</div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty" id="emptyState">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+        </svg>
+      </div>
+      <div class="empty-title">No scan running</div>
+      <div class="empty-sub">Enter a hostname or URL in the sidebar and click Scan Target to begin a security assessment.</div>
+    </div>
+
+    <!-- Progress -->
+    <div id="progressSection" style="display:none">
+      <div class="progress-card">
+        <div class="progress-title">Scan in progress — <span id="progressTarget"></span></div>
+        <div id="stepsList"></div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="errorBox" style="display:none"></div>
+
+    <!-- Results -->
+    <div id="resultsSection" style="display:none"></div>
+
+  </div>
+</div>
+
+<script>
+const STEPS_DEF = [
+  {id:'resolve', label:'Resolving hostname & IP address'},
+  {id:'http',    label:'Scanning HTTP headers & SSL/TLS'},
+  {id:'dns',     label:'Enumerating DNS records & subdomains'},
+  {id:'ports',   label:'Scanning common TCP ports'},
+  {id:'score',   label:'Calculating risk score & generating report'},
+];
+
+let stepState = {};
+
+function setTarget(t){ document.getElementById('targetInput').value = t; }
+
+function resetUI(){
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('progressSection').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('resultsSection').innerHTML = '';
+  stepState = {};
+  STEPS_DEF.forEach(s => stepState[s.id] = 'wait');
+}
+
+function renderSteps(){
+  document.getElementById('stepsList').innerHTML = STEPS_DEF.map(s => {
+    const st = stepState[s.id] || 'wait';
+    const icons = {wait:'○', active:'…', done:'✓', error:'✗'};
+    return `<div class="step ${st}">
+      <div class="step-dot">${icons[st]||'○'}</div>
+      <div class="step-msg">${s.label}${stepState[s.id+'_msg'] ? ' — <em>' + stepState[s.id+'_msg'] + '</em>' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function gradeColor(g){ return {A:'#22c55e',B:'#84cc16',C:'#eab308',D:'#f97316',F:'#ef4444'}[g]||'#6b7280'; }
+function sevColor(s){ return {CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#22c55e',INFO:'#3b82f6'}[s]||'#6b7280'; }
+function barColor(score){ return score>=75?'#22c55e':score>=50?'#eab308':score>=25?'#f97316':'#ef4444'; }
+
+function buildResults(d){
+  const vulns = d.vulnerabilities || [];
+  const risk  = d.risk || {};
+  const counts = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0,INFO:0};
+  vulns.forEach(v => counts[v.severity] = (counts[v.severity]||0)+1);
+
+  const grade = risk.rating === 'SECURE' ? 'A' : risk.rating === 'LOW' ? 'B' : risk.rating === 'MEDIUM' ? 'C' : risk.rating === 'HIGH' ? 'D' : 'F';
+  const gc    = gradeColor(grade);
+  const score = risk.score || 0;
+  const bc    = barColor(score);
+
+  // Vulns HTML
+  const vulnHtml = vulns.map(v => `
+    <div class="vuln">
+      <div><div class="sev-badge ${v.severity}">${v.severity}</div></div>
+      <div>
+        <div class="vuln-title">${(v.type||'Finding').replace(/_/g,' ')}</div>
+        <div class="vuln-desc">${v.detail||v.description||''}</div>
+        ${v.recommendation ? `<div class="vuln-rec">${v.recommendation}</div>` : ''}
+        ${v.owasp ? `<div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:4px">${v.owasp}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  // Ports HTML
+  const ports  = d.ports || [];
+  const portHtml = ports.length ? `
+    <table class="port-table">
+      <thead><tr><th>Port</th><th>Service</th><th>Risk</th><th>Banner</th></tr></thead>
+      <tbody>${ports.map(p => `<tr>
+        <td class="port-num">${p.port}</td>
+        <td>${p.service||'unknown'}</td>
+        <td class="risk-${(p.risk||'low').toLowerCase()}">${p.risk||'LOW'}</td>
+        <td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.banner||'—').substring(0,60)}</td>
+      </tr>`).join('')}</tbody>
+    </table>` : '<div style="font-size:13px;color:var(--text3);font-family:monospace">No open ports found in common range.</div>';
+
+  // DNS HTML
+  const dns = d.dns || {};
+  const records = dns.records || {};
+  const subs = dns.subdomains || [];
+  const zt   = dns.zone_transfer || {};
+  const dnsRecordHtml = Object.entries(records).map(([type, vals]) =>
+    vals.map(v => `<div class="dns-record"><span class="dns-rtype">${type}</span> ${(v||'').substring(0,60)}</div>`).join('')
+  ).join('');
+
+  const subsHtml = subs.slice(0,10).map(s =>
+    `<div class="dns-record" style="color:var(--green)">${s.subdomain} <span style="color:var(--text3)">(${(s.ips||[]).join(', ')})</span></div>`
+  ).join('') + (subs.length > 10 ? `<div style="font-size:11px;color:var(--text3);padding:4px 0">...and ${subs.length-10} more</div>` : '');
+
+  const http = d.http || {};
+  const ssl  = http.ssl || {};
+  const sslStatus = ssl.issues && ssl.issues.length ? ssl.issues[0] : (ssl.protocol ? `${ssl.protocol} — ${ssl.cipher||''}` : 'N/A');
+  const sslColor  = ssl.issues && ssl.issues.length ? 'var(--red)' : 'var(--green)';
+  const serverVal = (http.server_info && Object.keys(http.server_info).length) ? Object.values(http.server_info)[0] : 'Not disclosed';
+
+  document.getElementById('resultsSection').innerHTML = `
+
+    <!-- Score -->
+    <div class="score-grid">
+      <div class="grade-box">
+        <div class="grade-letter" style="color:${gc}">${grade}</div>
+        <div class="grade-word" style="color:${gc}">${risk.rating||'UNKNOWN'}</div>
+        <div class="grade-score">${score}/100 risk score</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat"><div class="stat-num" style="color:var(--red)">${counts.CRITICAL}</div><div class="stat-lbl">Critical</div><div class="stat-bar" style="background:var(--red);width:${Math.min(counts.CRITICAL*25,100)}%"></div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--orange)">${counts.HIGH}</div><div class="stat-lbl">High</div><div class="stat-bar" style="background:var(--orange);width:${Math.min(counts.HIGH*20,100)}%"></div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--yellow)">${counts.MEDIUM}</div><div class="stat-lbl">Medium</div><div class="stat-bar" style="background:var(--yellow);width:${Math.min(counts.MEDIUM*15,100)}%"></div></div>
+        <div class="stat"><div class="stat-num" style="color:var(--green)">${counts.LOW}</div><div class="stat-lbl">Low</div><div class="stat-bar" style="background:var(--green);width:${Math.min(counts.LOW*10,100)}%"></div></div>
+      </div>
+    </div>
+
+    <!-- Risk bar -->
+    <div class="risk-bar-wrap">
+      <div class="risk-bar-label"><span>Risk Level</span><span style="color:${bc}">${score}/100</span></div>
+      <div class="risk-bar"><div class="risk-bar-fill" style="width:0%;background:${bc}" id="riskBarFill"></div></div>
+    </div>
+
+    <!-- Info -->
+    <div class="info-grid">
+      <div class="info-card"><div class="info-card-label">Target</div><div class="info-card-val">${d.target||'—'}</div></div>
+      <div class="info-card"><div class="info-card-label">IP Address</div><div class="info-card-val">${d.ip||'—'}</div></div>
+      <div class="info-card"><div class="info-card-label">Duration</div><div class="info-card-val">${d.duration||'—'}</div></div>
+      <div class="info-card"><div class="info-card-label">SSL/TLS</div><div class="info-card-val" style="color:${sslColor}">${sslStatus}</div></div>
+      <div class="info-card"><div class="info-card-label">HTTP Status</div><div class="info-card-val">${http.status_code||'N/A'}</div></div>
+      <div class="info-card"><div class="info-card-label">Server</div><div class="info-card-val">${serverVal}</div></div>
+    </div>
+
+    <!-- Vulnerabilities -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">All Findings</div>
+        <div class="section-count">${vulns.length} total</div>
+      </div>
+      ${vulnHtml || '<div style="font-size:13px;color:var(--text3);font-family:monospace;padding:8px 0">No vulnerabilities found.</div>'}
+    </div>
+
+    <!-- Ports -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Open Ports</div>
+        <div class="section-count">${ports.length} found</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">${portHtml}</div>
+    </div>
+
+    <!-- DNS -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">DNS Reconnaissance</div>
+        <div class="section-count">${subs.length} subdomains</div>
+      </div>
+      <div class="dns-grid">
+        <div class="dns-card">
+          <div class="dns-card-title">DNS Records</div>
+          ${dnsRecordHtml || '<div style="font-size:12px;color:var(--text3)">No records found</div>'}
+        </div>
+        <div class="dns-card">
+          <div class="dns-card-title">Subdomains (${subs.length})</div>
+          ${subsHtml || '<div style="font-size:12px;color:var(--text3)">None discovered</div>'}
+          ${zt.success ? `<div style="color:var(--red);font-size:12px;margin-top:8px;font-family:monospace">⚠ Zone transfer succeeded on ${zt.nameserver}!</div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Report button -->
+    ${d.report ? `<a class="report-btn" href="/${d.report}" target="_blank">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Open Full HTML Report
+    </a>` : ''}
+  `;
+
+  document.getElementById('resultsSection').style.display = 'block';
+  // Animate bar
+  setTimeout(() => {
+    const fill = document.getElementById('riskBarFill');
+    if(fill) fill.style.width = score + '%';
+  }, 100);
+}
+
+async function startScan(){
+  const raw = document.getElementById('targetInput').value.trim();
+  if(!raw){ document.getElementById('targetInput').focus(); return; }
+
+  const ports = document.getElementById('modPorts').checked;
+  const http  = document.getElementById('modHttp').checked;
+  const dns   = document.getElementById('modDns').checked;
+
+  document.getElementById('scanBtn').disabled = true;
+  resetUI();
+
+  document.getElementById('progressSection').style.display = 'block';
+  document.getElementById('progressTarget').textContent = raw;
+
+  // Set active steps based on selected modules
+  if(http)  stepState['http']  = 'wait';
+  if(dns)   stepState['dns']   = 'wait';
+  if(ports) stepState['ports'] = 'wait';
+  stepState['resolve'] = 'active';
+  renderSteps();
+
+  try {
+    const resp = await fetch('/api/scan', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({target: raw, ports, http, dns})
+    });
+
+    if(!resp.ok) throw new Error('Server error ' + resp.status);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += decoder.decode(value, {stream:true});
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for(const line of lines){
+        if(!line.startsWith('data:')) continue;
+        try {
+          const evt = JSON.parse(line.slice(5));
+
+          if(evt.type === 'complete'){
+            if(evt.error){
+              document.getElementById('progressSection').style.display = 'none';
+              document.getElementById('errorBox').style.display = 'block';
+              document.getElementById('errorBox').textContent = 'Error: ' + evt.error;
+            } else {
+              STEPS_DEF.forEach(s => { if(stepState[s.id] !== 'error') stepState[s.id] = 'done'; });
+              renderSteps();
+              setTimeout(() => {
+                document.getElementById('progressSection').style.display = 'none';
+                buildResults(evt.data);
+              }, 600);
+            }
+          } else {
+            const id = evt.step;
+            if(evt.error){ stepState[id] = 'error'; }
+            else if(evt.done){ stepState[id] = 'done'; }
+            else { stepState[id] = 'active'; }
+            if(evt.msg) stepState[id+'_msg'] = evt.done ? evt.msg : '';
+
+            // Advance next step to active
+            const ids = STEPS_DEF.map(s=>s.id);
+            const idx = ids.indexOf(id);
+            if(evt.done && idx+1 < ids.length) stepState[ids[idx+1]] = 'active';
+            renderSteps();
+          }
+        } catch(e){}
+      }
+    }
+  } catch(err){
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('errorBox').style.display = 'block';
+    document.getElementById('errorBox').textContent = 'Error: ' + (err.message || 'Scan failed. Is the server running?');
+  }
+
+  document.getElementById('scanBtn').disabled = false;
+}
+
+document.getElementById('targetInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter') startScan();
+});
+</script>
+</body>
+</html>

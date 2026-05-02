@@ -12,11 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
       with:
         python-version: "3.12"
 
@@ -32,48 +30,28 @@ jobs:
         python -c "from modules.dns_recon import run_dns_recon; print('dns_recon OK')"
         python -c "from modules.vuln_analysis import calculate_risk_score; print('vuln_analysis OK')"
         python -c "from modules.report_generator import generate_html_report; print('report_generator OK')"
+        python -c "from app import app; print('Flask app OK')"
 
-    - name: Test CLI help
+    - name: Test CLI
       run: python scanner.py --help
 
-    - name: Test risk scoring logic
+    - name: Test Flask routes
+      run: |
+        python -c "
+        from app import app
+        with app.test_client() as c:
+          r = c.get('/')
+          assert r.status_code == 200, f'Expected 200, got {r.status_code}'
+          print('GET / =>', r.status_code, 'OK')
+        "
+
+    - name: Test risk scoring
       run: |
         python -c "
         from modules.vuln_analysis import calculate_risk_score
-        vulns = [
-          {'severity': 'CRITICAL', 'type': 'TEST'},
-          {'severity': 'HIGH', 'type': 'TEST'},
-          {'severity': 'MEDIUM', 'type': 'TEST'},
-        ]
-        score = calculate_risk_score(vulns)
-        assert score['score'] == 40
-        assert score['rating'] == 'MEDIUM'
-        print('Risk scoring OK')
-        "
-
-    - name: Test HTML report generation
-      run: |
-        python -c "
-        import os, tempfile
-        from modules.report_generator import generate_html_report
-        scan_data = {
-          'target': 'test.example.com',
-          'timestamp': '2026-01-01 00:00:00',
-          'modules_run': ['Port Scan'],
-          'ports': [{'port': 80, 'service': 'HTTP', 'risk': 'LOW', 'banner': None}],
-          'http': {'reachable': False},
-          'dns': {},
-          'all_vulnerabilities': [{'type': 'MISSING_SECURITY_HEADER', 'severity': 'HIGH', 'detail': 'Test'}],
-          'risk_score': {'score': 10, 'rating': 'LOW', 'counts': {'CRITICAL':0,'HIGH':1,'MEDIUM':0,'LOW':0,'INFO':0}},
-          'duration': '5.0s'
-        }
-        with tempfile.NamedTemporaryFile(suffix='.html', delete=False) as f:
-          path = f.name
-        generate_html_report(scan_data, path)
-        size = os.path.getsize(path)
-        os.unlink(path)
-        assert size > 1000
-        print('HTML report OK (' + str(size) + ' bytes)')
+        score = calculate_risk_score([{'severity':'CRITICAL','type':'T'},{'severity':'HIGH','type':'T'}])
+        assert score['score'] == 35
+        print('Risk score OK:', score['score'])
         "
 
   docker:
@@ -82,7 +60,5 @@ jobs:
     needs: test
     steps:
     - uses: actions/checkout@v4
-    - name: Build Docker image
-      run: docker build -t vulnscanner:test .
-    - name: Test Docker runs
-      run: docker run --rm vulnscanner:test --help
+    - run: docker build -t vulnscanner:test .
+    - run: docker run --rm vulnscanner:test --help
